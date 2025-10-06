@@ -1,78 +1,81 @@
+# src/core/config.py
 from functools import lru_cache
-from typing import Annotated
-from pydantic import Field, field_validator, computed_field
+from typing import Literal
+from urllib.parse import quote_plus
+
+from pydantic import Field, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings using Pydantic v2 BaseSettings for validation and type safety."""
-    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
     )
-    
-    # API Configuration
-    scheme: str = Field(default="http", description="API scheme (http/https)")
-    host: str = Field(..., description="API host")
-    port: Annotated[str, Field(..., description="API port")] 
-    base_path: str = Field(..., description="API base path")
-    auth_type: str = Field(default="Basic", description="Authentication type")
-    auth_token: str = Field(..., description="Authentication token")
-    fundo: str = Field(..., description="Fundo identifier")
-    cultivo: str = Field(..., description="Cultivo identifier")
-    ruc_empresa: str = Field(..., description="RUC empresa")
-    
-    # Cartilla Configuration
-    cartilla_piquillo: str = Field(..., description="Cartilla proyección piquillo")
-    cartilla_california: str = Field(..., description="Cartilla proyección california")
-    cartilla_conteos_piquillo: str = Field(..., description="Cartilla conteos piquillo")
-    cartilla_conteos_california: str = Field(..., description="Cartilla conteos california")
-    
-    # Database Configuration
-    raw_storage_host: str = Field(default="localhost", description="Database host")
-    raw_storage_port: Annotated[str, Field(default="5432", description="Database port")]
-    raw_storage_user: str = Field(default="postgres", description="Database user")
-    raw_storage_password: str = Field(..., description="Database password")
-    raw_storage_database: str = Field(default="peppers_raw", description="Database name")
+
+    # API / Integración
+    SCHEME: Literal["http", "https"] = Field(default="http")
+    HOST: str = Field(...)
+    PORT: int = Field(...)
+    BASE_PATH: str = Field(...)
+    AUTH_TYPE: str = "Basic"
+    AUTH_TOKEN: str = Field(...)
+
+    FUNDO: str = Field(...)
+    CULTIVO: str = Field(...)
+    RUC_EMPRESA: str = Field(...)
+
+    CARTILLA_PIQUILLO: str = Field(...)
+    CARTILLA_CALIFORNIA: str = Field(...)
+    CARTILLA_CONTEOS_PIQUILLO: str = Field(...)
+    CARTILLA_CONTEOS_CALIFORNIA: str = Field(...)
+
+    # DB
+    RAW_STORAGE_HOST: str = "localhost"
+    RAW_STORAGE_PORT: int = 5432
+    RAW_STORAGE_USER: str = "postgres"
+    RAW_STORAGE_PASSWORD: str = Field(...)
+    RAW_STORAGE_DATABASE: str = "peppers_raw"
+
+    # **Nuevo**: echo de SQLAlchemy
+    DB_ECHO_LOG: bool = True
+
+    # Derivados
+    @computed_field
+    @property
+    def API_BASE_URL(self) -> str:
+        base_path = (
+            self.BASE_PATH if self.BASE_PATH.startswith("/") else f"/{self.BASE_PATH}"
+        )
+        return f"{self.SCHEME}://{self.HOST}:{self.PORT}{base_path.rstrip('/') or '/'}"
 
     @computed_field
     @property
+    def DATABASE_URL(self) -> str:
+        user = quote_plus(self.RAW_STORAGE_USER)
+        pwd = quote_plus(self.RAW_STORAGE_PASSWORD)
+        return f"postgresql+asyncpg://{user}:{pwd}@{self.RAW_STORAGE_HOST}:{self.RAW_STORAGE_PORT}/{self.RAW_STORAGE_DATABASE}"
+
+    # Alias en minúsculas para compatibilidad con tu engine actual
+    @computed_field
+    @property
     def database_url(self) -> str:
-        """Generate the async PostgreSQL database URL."""
-        return (
-            f"postgresql+asyncpg://{self.raw_storage_user}:{self.raw_storage_password}"
-            f"@{self.raw_storage_host}:{self.raw_storage_port}/{self.raw_storage_database}"
-        )
+        return self.DATABASE_URL
 
-    @field_validator("port", "raw_storage_port")
+    @field_validator("PORT", "RAW_STORAGE_PORT")
     @classmethod
-    def validate_port(cls, v: str) -> str:
-        """Validate that port is a valid port number."""
-        try:
-            port_int = int(v)
-            if not (1 <= port_int <= 65535):
-                raise ValueError("Port must be between 1 and 65535")
-            return v
-        except ValueError as e:
-            raise ValueError("Port must be a valid integer") from e
-
-    @field_validator("scheme")
-    @classmethod
-    def validate_scheme(cls, v: str) -> str:
-        """Validate that scheme is http or https."""
-        if v.lower() not in ["http", "https"]:
-            raise ValueError("Scheme must be 'http' or 'https'")
-        return v.lower()
+    def _validate_port(cls, v: int) -> int:
+        if not (1 <= v <= 65535):
+            raise ValueError("Port must be between 1 and 65535")
+        return v
 
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Return a cached Settings instance.
-    
-    Using lru_cache ensures we only create one instance and reuse it,
-    which is more efficient than the previous singleton pattern.
-    """
-    return Settings()
+    return Settings()  # type: ignore[call-arg]
+
+
+# **Exporta** una instancia para `from src.core.config import settings`
+settings: Settings = get_settings()
