@@ -1,13 +1,15 @@
 from urllib.parse import urlencode
 import aiohttp
-from src.config.settings import Settings
+from src.config import Settings, get_settings
 from ..interface.extractor_api import ExtractorAPI
 
 
 class ExtractorAPIImpl(ExtractorAPI):
     def __init__(self, settings: Settings | None = None):
-        self.settings = settings or Settings()
-        self.settings.validate()
+        # Use singleton settings by default; validate only if a custom instance is passed
+        self.settings = settings or get_settings()
+        if settings is not None:
+            self.settings.validate()
         self.base_url = f"{self.settings.scheme}://{self.settings.host}:{self.settings.port}{self.settings.base_path}"
         self.endpoint = f"{self.base_url}/Fitosanidad/ZABG_RptEvaluacionesXVariable"
 
@@ -42,20 +44,25 @@ class ExtractorAPIImpl(ExtractorAPI):
                 url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 response.raise_for_status()
-                return await response.json()
+                data = await response.json()
+                return data
 
     async def get_piquillo_projection_sheet_data(self, date: str) -> dict[str, str]:
         assert self.settings.cartilla_piquillo is not None
-        return await self._fetch_data(self.settings.cartilla_piquillo, date)
+        result = await self._fetch_data(self.settings.cartilla_piquillo, date)
+        return result
 
     async def get_california_projection_sheet_data(self, date: str) -> dict[str, str]:
         assert self.settings.cartilla_california is not None
-        return await self._fetch_data(self.settings.cartilla_california, date)
+        result = await self._fetch_data(self.settings.cartilla_california, date)
+        return result
 
     async def get_piquillo_varieties_count_data(self, date: str) -> dict[str, str]:
         assert self.settings.cartilla_conteos_piquillo is not None
-        return await self._fetch_data(self.settings.cartilla_conteos_piquillo, date)
+        result = await self._fetch_data(self.settings.cartilla_conteos_piquillo, date)
+        return result
 
     async def get_california_varieties_count_data(self, date: str) -> dict[str, str]:
         assert self.settings.cartilla_conteos_california is not None
-        return await self._fetch_data(self.settings.cartilla_conteos_california, date)
+        result = await self._fetch_data(self.settings.cartilla_conteos_california, date)
+        return result
