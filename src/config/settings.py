@@ -33,3 +33,19 @@ class Settings:
         missing = [attr for attr in required if getattr(self, attr) is None]
         if missing:
             raise ValueError(f"Missing environment variables: {', '.join(missing)}")
+
+
+# Singleton accessor to return a validated Settings instance
+_settings_instance: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Return a singleton, validated Settings instance.
+
+    This helps consumers who prefer to obtain an instance directly from config.
+    """
+    global _settings_instance
+    if _settings_instance is None:
+        _settings_instance = Settings()
+        _settings_instance.validate()
+    return _settings_instance
