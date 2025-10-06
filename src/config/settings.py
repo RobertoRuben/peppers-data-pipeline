@@ -19,6 +19,21 @@ class Settings:
         self.cartilla_california = os.getenv("CARTILLA_PROYECCION_CALIFORNIA")
         self.cartilla_conteos_piquillo = os.getenv("CARTILLA_CONTEOS_PIQUILLO")
         self.cartilla_conteos_california = os.getenv("CARTILLA_CONTEOS_CALIFORNIA")
+        
+        # Database configuration
+        self.raw_storage_host = os.getenv("RAW_STORAGE_HOST", "localhost")
+        self.raw_storage_port = os.getenv("RAW_STORAGE_PORT", "5432")
+        self.raw_storage_user = os.getenv("RAW_STORAGE_USER", "postgres")
+        self.raw_storage_password = os.getenv("RAW_STORAGE_PASSWORD")
+        self.raw_storage_database = os.getenv("RAW_STORAGE_DATABASE", "peppers_raw")
+
+    @property
+    def database_url(self) -> str:
+        """Generate the async PostgreSQL database URL."""
+        return (
+            f"postgresql+asyncpg://{self.raw_storage_user}:{self.raw_storage_password}"
+            f"@{self.raw_storage_host}:{self.raw_storage_port}/{self.raw_storage_database}"
+        )
 
     def validate(self):
         required = [
