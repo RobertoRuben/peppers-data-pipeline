@@ -3,11 +3,17 @@ from abc import ABC, abstractmethod
 
 class ExtractorAPI(ABC):
     @abstractmethod
-    async def get_data(self, api_url: str) -> dict:
-        """
-        Asynchronously fetch data from the given API URL.
+    async def get_piquillo_projection_sheet_data(self, date: str):
+        pass
 
-        :param api_url: The URL of the API endpoint to fetch data from.
-        :return: A dictionary containing the fetched data.
-        """
+    @abstractmethod
+    async def get_california_projection_sheet_data(self, date: str):
+        pass
+
+    @abstractmethod
+    async def get_piquillo_varieties_count_data(self, date: str):
+        pass
+
+    @abstractmethod
+    async def get_california_varieties_count_data(self, date: str):
         pass
