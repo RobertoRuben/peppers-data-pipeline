@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 import aiohttp
-from src.config import Settings, get_settings
-from ..interface.extractor_api import ExtractorAPI
+from src.core.config import Settings, get_settings
+from ..interface import ExtractorAPI
 
 
 class ExtractorAPIImpl(ExtractorAPI):
